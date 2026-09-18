@@ -85,10 +85,16 @@ class SqfliteDatabaseService {
 class AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();
 
-  factory AppDatabase() => _instance;
+  factory AppDatabase({String? databaseName}) {
+    if (databaseName != null) {
+      return AppDatabase._internal(databaseName: databaseName);
+    }
+    return _instance;
+  }
 
-  AppDatabase._internal();
+  AppDatabase._internal({this.databaseName = 'student_attendance'});
 
+  final String databaseName;
   Database? _database;
 
   Future<Database> get database async {
@@ -100,8 +106,12 @@ class AppDatabase {
   }
 
   Future<Database> init() async {
+    if (_database != null && _database!.isOpen) {
+      return _database!;
+    }
+
     final databasePath = await getDatabasesPath();
-    final path = '$databasePath/student_attendance.db';
+    final path = '$databasePath/$databaseName.db';
 
     _database = await openDatabase(
       path,
@@ -136,11 +146,18 @@ class AppDatabase {
     ''');
   }
 
-  Future<void> deleteDatabase() async {
-    final databasePath = await getDatabasesPath();
-    final path = '$databasePath/student_attendance.db';
-    await databaseFactory.deleteDatabase(path);
+  Future<void> closeDatabase() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+    }
     _database = null;
+  }
+
+  Future<void> deleteDatabase() async {
+    await closeDatabase();
+    final databasePath = await getDatabasesPath();
+    final path = '$databasePath/$databaseName.db';
+    await databaseFactory.deleteDatabase(path);
   }
 
   Future<int> insertStudent(String name) async {
@@ -171,6 +188,21 @@ class AppDatabase {
     final db = await database;
     return db.delete(
       'students',
+      where: 'id = ?',
+      whereArgs: [studentId],
+    );
+  }
+
+  Future<int> updateStudentName(int studentId, String newName) async {
+    final cleanedName = newName.trim();
+    if (cleanedName.isEmpty) {
+      throw ArgumentError('Student name cannot be empty');
+    }
+
+    final db = await database;
+    return db.update(
+      'students',
+      {'name': cleanedName},
       where: 'id = ?',
       whereArgs: [studentId],
     );
@@ -213,6 +245,11 @@ class AppDatabase {
     );
 
     return maps.map(AttendanceRecord.fromMap).toList();
+  }
+
+  Future<int> clearAllAttendance() async {
+    final db = await database;
+    return db.delete('attendance');
   }
 
   Future<List<StudentPerformance>> getStudentPerformance() async {

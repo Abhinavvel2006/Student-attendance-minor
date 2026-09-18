@@ -68,6 +68,44 @@ class _StudentPageState extends State<StudentPage> {
     await _loadStudents();
   }
 
+  Future<void> _editStudent(StudentRecord student) async {
+    if (student.id == null) return;
+
+    final controller = TextEditingController(text: student.name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Update Student Name'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Enter student name',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || result.trim().isEmpty) {
+      return;
+    }
+
+    await _database.updateStudentName(student.id!, result);
+    await _loadStudents();
+  }
+
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length == 1) {
@@ -146,6 +184,11 @@ class _StudentPageState extends State<StudentPage> {
                                 student.name,
                                 style: const TextStyle(fontSize: 16),
                               ),
+                            ),
+                            IconButton(
+                              onPressed: () => _editStudent(student),
+                              icon: const Icon(Icons.edit_note_outlined, color: Colors.blue),
+                              tooltip: 'Edit student name',
                             ),
                             IconButton(
                               onPressed: () => _deleteStudent(student),

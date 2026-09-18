@@ -11,6 +11,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final AppDatabase _database = AppDatabase();
   List<StudentPerformance> _students = [];
+  String _adminName = 'Admin Profile';
+  String _adminRole = 'Attendance Manager';
 
   @override
   void initState() {
@@ -23,6 +25,91 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!mounted) return;
     setState(() {
       _students = students;
+    });
+  }
+
+  Future<void> _clearAllAttendance() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Clear all attendance?'),
+          content: const Text(
+            'This will remove all attendance records for all students.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Clear'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await _database.clearAllAttendance();
+    await _loadStudentPerformance();
+  }
+
+  Future<void> _editProfile() async {
+    final nameController = TextEditingController(text: _adminName);
+    final roleController = TextEditingController(text: _adminRole);
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Admin Profile'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: roleController,
+                decoration: const InputDecoration(labelText: 'Role'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop({
+                'name': nameController.text,
+                'role': roleController.text,
+              }),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    setState(() {
+      _adminName = result['name']?.trim().isNotEmpty == true
+          ? result['name']!
+          : 'Admin Profile';
+      _adminRole = result['role']?.trim().isNotEmpty == true
+          ? result['role']!
+          : 'Attendance Manager';
     });
   }
 
@@ -70,21 +157,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Admin Profile',
-                        style: TextStyle(
+                        _adminName,
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'Attendance Manager',
-                        style: TextStyle(
+                        _adminRole,
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
                         ),
@@ -93,19 +180,29 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 IconButton(
-                  onPressed: () {},
+                  onPressed: _editProfile,
                   icon: const Icon(Icons.edit, color: Colors.blue),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Student Performance',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Student Performance',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _clearAllAttendance,
+                icon: const Icon(Icons.delete_sweep_outlined),
+                label: const Text('Clear All'),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Expanded(

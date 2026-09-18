@@ -10,12 +10,15 @@ void main() {
     late AppDatabase database;
 
     setUp(() async {
-      database = AppDatabase();
+      final uniqueName = 'student_attendance_test_${DateTime.now().microsecondsSinceEpoch}';
+      database = AppDatabase(databaseName: uniqueName);
+      await database.closeDatabase();
       await database.deleteDatabase();
       await database.init();
     });
 
     tearDown(() async {
+      await database.closeDatabase();
       await database.deleteDatabase();
     });
 
