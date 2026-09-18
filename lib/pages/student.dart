@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student_attendance/database/database.dart';
 
 class StudentPage extends StatefulWidget {
   const StudentPage({super.key});
@@ -8,22 +9,71 @@ class StudentPage extends StatefulWidget {
 }
 
 class _StudentPageState extends State<StudentPage> {
-  final List<String> students = [
-    'Aisha Khan',
-    'Rahul Sharma',
-    'Meera Nair',
-  ];
+  final AppDatabase _database = AppDatabase();
+  List<StudentRecord> _students = [];
 
-  void _addStudent() {
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+  }
+
+  Future<void> _loadStudents() async {
+    final students = await _database.getStudents();
+    if (!mounted) return;
     setState(() {
-      students.add('Student ${students.length + 1}');
+      _students = students;
     });
   }
 
-  void _deleteStudent(int index) {
-    setState(() {
-      students.removeAt(index);
-    });
+  Future<void> _addStudent() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Student'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Enter student name',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || result.trim().isEmpty) {
+      return;
+    }
+
+    await _database.insertStudent(result);
+    await _loadStudents();
+  }
+
+  Future<void> _deleteStudent(StudentRecord student) async {
+    if (student.id == null) return;
+    await _database.deleteStudent(student.id!);
+    await _loadStudents();
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    return parts.take(2).map((part) => part[0].toUpperCase()).join();
   }
 
   @override
@@ -51,60 +101,63 @@ class _StudentPageState extends State<StudentPage> {
             ],
           ),
           const SizedBox(height: 16),
-          ...students.asMap().entries.map((entry) {
-            final index = entry.key;
-            final student = entry.value;
-            final initials = student
-                .split(' ')
-                .where((part) => part.isNotEmpty)
-                .take(2)
-                .map((part) => part[0].toUpperCase())
-                .join();
+          Expanded(
+            child: _students.isEmpty
+                ? const Center(
+                    child: Text('No students added yet.'),
+                  )
+                : ListView.builder(
+                    itemCount: _students.length,
+                    itemBuilder: (context, index) {
+                      final student = _students[index];
+                      final initials = _initials(student.name);
 
-            return Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: Colors.blue.shade100,
+                              child: Text(
+                                initials,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                student.name,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => _deleteStudent(student),
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Delete student',
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.blue.shade100,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      student,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => _deleteStudent(index),
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    tooltip: 'Delete student',
-                  ),
-                ],
-              ),
-            );
-          }),
+          ),
         ],
       ),
     );

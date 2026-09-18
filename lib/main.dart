@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:student_attendance/database/database.dart';
 import 'package:student_attendance/pages/attendance.dart';
 import 'package:student_attendance/pages/profile.dart';
 import 'package:student_attendance/pages/student.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppDatabase().init();
   runApp(const MyApp());
 }
 
