@@ -121,6 +121,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return parts.take(2).map((part) => part[0].toUpperCase()).join();
   }
 
+  String get _adminInitials => _initials(_adminName);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -147,9 +149,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.blue.shade100,
-                  child: const Text(
-                    'AD',
-                    style: TextStyle(
+                  child: Text(
+                    _adminInitials,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue,

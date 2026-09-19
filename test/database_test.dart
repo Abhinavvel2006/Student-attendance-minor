@@ -49,5 +49,29 @@ void main() {
       expect(attendance.first.studentId, studentId);
       expect(attendance.first.status, 'present');
     });
+
+    test('rejects duplicate student names case-insensitively', () async {
+      await database.insertStudent('Aisha Khan');
+
+      expect(
+        () => database.insertStudent('  aisha khan  '),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      expect(
+        () => database.updateStudentName(1, 'aisha khan'),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('clears attendance records for a specific date', () async {
+      final studentId = await database.insertStudent('Rahul Sharma');
+      await database.insertAttendance(studentId, '2026-09-18', 'present');
+
+      await database.clearAttendanceForDate('2026-09-18');
+
+      final attendance = await database.getAttendanceForDate('2026-09-18');
+      expect(attendance, isEmpty);
+    });
   });
 }

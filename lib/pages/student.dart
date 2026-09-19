@@ -58,12 +58,43 @@ class _StudentPageState extends State<StudentPage> {
       return;
     }
 
-    await _database.insertStudent(result);
-    await _loadStudents();
+    try {
+      await _database.insertStudent(result);
+      await _loadStudents();
+    } on ArgumentError catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message.toString())),
+      );
+    }
   }
 
   Future<void> _deleteStudent(StudentRecord student) async {
     if (student.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete student?'),
+          content: Text(
+            'This will remove ${student.name} and all their attendance records.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
     await _database.deleteStudent(student.id!);
     await _loadStudents();
   }
@@ -102,8 +133,15 @@ class _StudentPageState extends State<StudentPage> {
       return;
     }
 
-    await _database.updateStudentName(student.id!, result);
-    await _loadStudents();
+    try {
+      await _database.updateStudentName(student.id!, result);
+      await _loadStudents();
+    } on ArgumentError catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message.toString())),
+      );
+    }
   }
 
   String _initials(String name) {

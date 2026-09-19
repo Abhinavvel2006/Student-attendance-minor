@@ -50,10 +50,7 @@ class _StudentAttendanceHomeState extends State<StudentAttendanceHome> {
         centerTitle: true,
         title: const Text(
           'Student Attendance',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.purple,
       ),

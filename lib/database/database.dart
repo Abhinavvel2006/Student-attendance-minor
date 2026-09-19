@@ -14,17 +14,11 @@ class StudentRecord {
   StudentRecord({this.id, required this.name});
 
   factory StudentRecord.fromMap(Map<String, dynamic> map) {
-    return StudentRecord(
-      id: map['id'] as int?,
-      name: map['name'] as String,
-    );
+    return StudentRecord(id: map['id'] as int?, name: map['name'] as String);
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-    };
+    return {'id': id, 'name': name};
   }
 }
 
@@ -77,7 +71,9 @@ class StudentPerformance {
 class SqfliteDatabaseService {
   static Future<int> countRows(String tableName) async {
     final db = await AppDatabase().database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $tableName');
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $tableName',
+    );
     return (result.first['count'] as int?) ?? 0;
   }
 }
@@ -167,30 +163,33 @@ class AppDatabase {
     }
 
     final db = await database;
-    return db.insert(
+    final existing = await db.query(
       'students',
-      {'name': cleanedName, 'created_at': DateTime.now().toIso8601String()},
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      where: 'LOWER(name) = ?',
+      whereArgs: [cleanedName.toLowerCase()],
+      limit: 1,
     );
+
+    if (existing.isNotEmpty) {
+      throw ArgumentError('Student name must be unique');
+    }
+
+    return db.insert('students', {
+      'name': cleanedName,
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<StudentRecord>> getStudents() async {
     final db = await database;
-    final maps = await db.query(
-      'students',
-      orderBy: 'id ASC',
-    );
+    final maps = await db.query('students', orderBy: 'id ASC');
 
     return maps.map(StudentRecord.fromMap).toList();
   }
 
   Future<int> deleteStudent(int studentId) async {
     final db = await database;
-    return db.delete(
-      'students',
-      where: 'id = ?',
-      whereArgs: [studentId],
-    );
+    return db.delete('students', where: 'id = ?', whereArgs: [studentId]);
   }
 
   Future<int> updateStudentName(int studentId, String newName) async {
@@ -200,6 +199,17 @@ class AppDatabase {
     }
 
     final db = await database;
+    final existing = await db.query(
+      'students',
+      where: 'id != ? AND LOWER(name) = ?',
+      whereArgs: [studentId, cleanedName.toLowerCase()],
+      limit: 1,
+    );
+
+    if (existing.isNotEmpty) {
+      throw ArgumentError('Student name must be unique');
+    }
+
     return db.update(
       'students',
       {'name': cleanedName},
@@ -208,19 +218,19 @@ class AppDatabase {
     );
   }
 
-  Future<int> insertAttendance(int studentId, String date, String status) async {
+  Future<int> insertAttendance(
+    int studentId,
+    String date,
+    String status,
+  ) async {
     final db = await database;
     final normalizedStatus = status.trim().toLowerCase();
 
-    return db.insert(
-      'attendance',
-      {
-        'student_id': studentId,
-        'date': date,
-        'status': normalizedStatus,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    return db.insert('attendance', {
+      'student_id': studentId,
+      'date': date,
+      'status': normalizedStatus,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<AttendanceRecord>> getAttendanceForDate(String date) async {
@@ -247,9 +257,23 @@ class AppDatabase {
     return maps.map(AttendanceRecord.fromMap).toList();
   }
 
+  Future<int> clearAttendanceForDate(String date) async {
+    final db = await database;
+    return db.delete('attendance', where: 'date = ?', whereArgs: [date]);
+  }
+
   Future<int> clearAllAttendance() async {
     final db = await database;
     return db.delete('attendance');
+  }
+
+  Future<int> deleteAttendanceForStudent(int studentId, String date) async {
+    final db = await database;
+    return db.delete(
+      'attendance',
+      where: 'student_id = ? AND date = ?',
+      whereArgs: [studentId, date],
+    );
   }
 
   Future<List<StudentPerformance>> getStudentPerformance() async {
